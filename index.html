@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173c35">
+<link rel="manifest" href="manifest.webmanifest">
+
+<title>VanStock — Appliance Repair Inventory</title>
+<style>
+:root{--green:#173c35;--green2:#24594f;--bg:#f4f6f4;--card:#fff;--text:#17211f;--muted:#64716d;--line:#dce4df;--warn:#9a5b00;--red:#a53232}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:var(--green);color:white;padding:calc(16px + env(safe-area-inset-top)) 16px 18px;position:sticky;top:0;z-index:3}
+.head{max-width:900px;margin:auto;display:flex;align-items:center;gap:12px}.logo{width:46px;height:46px;border-radius:14px;background:#fff2;display:grid;place-items:center;font-size:25px}.brand{font-size:22px;font-weight:800;letter-spacing:.2px}.subtitle{font-size:12px;opacity:.8}
+main{max-width:900px;margin:auto;padding:16px 14px calc(35px + env(safe-area-inset-bottom))}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}.stat,.panel,.part{background:var(--card);border:1px solid var(--line);border-radius:15px}.stat{padding:12px}.stat small{display:block;color:var(--muted);font-size:12px}.stat strong{font-size:25px;display:block;margin-top:3px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+button,.button{font:inherit;border:0;border-radius:11px;padding:12px 13px;background:var(--green);color:#fff;font-weight:700;cursor:pointer;min-height:44px}
+button.secondary,.button.secondary{background:#e8eeea;color:var(--green)}button.danger{background:#f9e8e7;color:var(--red)}button:disabled{opacity:.45}
+.panel{padding:14px;margin-bottom:14px}.panel h2{font-size:17px;margin:0 0 12px}
+input,select,textarea{width:100%;min-height:44px;padding:10px 11px;border:1px solid #cbd6d0;border-radius:10px;background:white;color:var(--text);font:inherit}
+label{display:block;font-size:13px;color:var(--muted);font-weight:650;margin:0 0 5px}.field{margin-bottom:11px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.formgrid .wide{grid-column:1/-1}
+.searchrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px}
+.filters{display:flex;gap:7px;overflow-x:auto;padding:1px 0 8px}.chip{white-space:nowrap;border:1px solid var(--line);background:white;color:var(--text);padding:8px 11px;border-radius:999px;font-size:13px;min-height:36px}.chip.active{background:var(--green);color:white;border-color:var(--green)}
+.part{padding:13px;margin-bottom:9px}.parttop{display:flex;justify-content:space-between;gap:10px}.partname{font-weight:800;font-size:16px}.partnum{color:var(--muted);font-size:13px;margin-top:3px;overflow-wrap:anywhere}.qty{font-size:24px;font-weight:800;text-align:right}.qtylabel{font-size:11px;color:var(--muted);text-align:right}.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tag{font-size:11px;background:#edf2ef;color:#40534c;border-radius:6px;padding:4px 7px}.tag.low{background:#fff0d6;color:var(--warn)}.partactions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}.partactions button{flex:1;padding:9px 10px;font-size:13px;min-height:40px}
+.empty{text-align:center;padding:28px 10px;color:var(--muted)}.hidden{display:none!important}.muted{color:var(--muted);font-size:12px}.notice{padding:10px 12px;border-radius:10px;background:#e7f3eb;color:#24533a;margin-bottom:12px;font-size:13px}.filebtn{display:inline-flex;align-items:center;justify-content:center}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:12px}
+@media(min-width:650px){.actions{grid-template-columns:repeat(4,1fr)}.inventorygrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.part{margin:0}.stats .stat{padding:15px}.formgrid{grid-template-columns:repeat(4,1fr)}.formgrid .wide{grid-column:span 2}}
+</style>
+</head>
+<body>
+<header><div class="head"><div class="logo">🔧</div><div><div class="brand">VanStock</div><div class="subtitle">Appliance repair inventory · works offline after opening</div></div></div></header>
+<main>
+<div id="notice" class="notice hidden" role="status"></div>
+<section class="stats">
+<div class="stat"><small>Part types</small><strong id="statTypes">0</strong></div>
+<div class="stat"><small>Total units</small><strong id="statUnits">0</strong></div>
+<div class="stat"><small>Low stock</small><strong id="statLow">0</strong></div>
+</section>
+<div class="actions">
+<button id="addToggle">＋ Add part</button>
+<button class="secondary" id="exportCsv">Export CSV</button>
+<button class="secondary" id="exportJson">Backup data</button>
+<button class="secondary" id="importToggle">Import CSV / restore</button>
+</div>
+<section id="addPanel" class="panel hidden">
+<h2 id="formTitle">Add inventory part</h2>
+<form id="partForm">
+<div class="formgrid">
+<div class="field"><label for="partNumber">Part number *</label><input id="partNumber" required autocomplete="off" placeholder="e.g. WP123456"></div>
+<div class="field"><label for="partName">Description *</label><input id="partName" required placeholder="Drain pump"></div>
+<div class="field"><label for="quantity">Quantity *</label><input id="quantity" required type="number" min="0" step="1" value="1"></div>
+<div class="field"><label for="minQty">Low-stock threshold</label><input id="minQty" type="number" min="0" step="1" value="1"></div>
+<div class="field"><label for="category">Appliance</label><select id="category"><option>Washer</option><option>Dryer</option><option>Refrigerator</option><option>Dishwasher</option><option>Range / Oven</option><option>Other</option></select></div>
+<div class="field"><label for="location">Van location / bin</label><input id="location" placeholder="e.g. Shelf B, Bin 04"></div>
+<div class="field wide"><label for="notes">Notes (optional)</label><input id="notes" placeholder="Model compatibility or other details"></div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit">Save part</button><button type="button" class="secondary" id="cancelForm">Cancel</button></div>
+<p class="muted">Part numbers must be unique. Edit an existing item to change its details.</p>
+</form>
+</section>
+<section id="importPanel" class="panel hidden">
+<h2>Import inventory</h2>
+<p class="muted">CSV should have columns: partNumber, name, quantity, minQty, category, location, notes. A VanStock JSON backup can also be restored.</p>
+<div class="field"><label for="fileInput">Choose CSV or JSON file</label><input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json"></div>
+<div style="display:flex;gap:8px"><button id="importFile">Import file</button><button class="secondary" id="cancelImport">Cancel</button></div>
+</section>
+<section class="panel">
+<h2>Find a part</h2>
+<div class="searchrow"><input id="search" type="search" placeholder="Search part number, name, or bin…" autocomplete="off"><button class="secondary" id="clearSearch">Clear</button></div>
+<div class="filters" id="filters">
+<button class="chip active" data-filter="All">All parts</button><button class="chip" data-filter="Low stock">Low stock</button><button class="chip" data-filter="Washer">Washer</button><button class="chip" data-filter="Dryer">Dryer</button><button class="chip" data-filter="Refrigerator">Refrigerator</button><button class="chip" data-filter="Dishwasher">Dishwasher</button><button class="chip" data-filter="Range / Oven">Range / Oven</button><button class="chip" data-filter="Other">Other</button>
+</div>
+<div class="muted" id="resultCount"></div>
+</section>
+<section><div id="partsList"></div><div id="emptyState" class="empty hidden">No parts found.<br><span class="muted">Add your first part or clear the search.</span></div></section>
+<section class="panel">
+<h2>Protect your inventory</h2>
+<p class="muted">This version saves data in this browser on this device. Export a JSON backup regularly. Clearing browser data or switching browsers can erase or hide your inventory. CSV export is for spreadsheets; JSON backup preserves all app fields.</p>
+<button class="danger" id="clearAll">Delete all inventory</button>
+</section>
+<footer>VanStock · Local device storage · Your paper list can be imported when digitized</footer>
+</main>
+<script>
+(function(){
+'use strict';
+const KEY='vanstock_inventory_v1';
+let parts=[], activeFilter='All', editingId=null;
+const $=id=>document.getElementById(id);
+function notify(msg){$('notice').textContent=msg;$('notice').classList.remove('hidden');setTimeout(()=>$('notice').classList.add('hidden'),4500)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(parts));return true}catch(e){notify('Could not save. Export a backup and check device storage.');return false}}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');parts=Array.isArray(x)?x:[]}catch(e){parts=[]}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+$('statTypes').textContent=parts.length;
+$('statUnits').textContent=parts.reduce((s,p)=>s+(Number(p.quantity)||0),0);
+$('statLow').textContent=parts.filter(p=>Number(p.quantity)<=Number(p.minQty||0)).length;
+const q=$('search').value.trim().toLowerCase();
+const found=parts.filter(p=>{
+const hay=[p.partNumber,p.name,p.category,p.location,p.notes].join(' ').toLowerCase();
+return hay.includes(q)&&(activeFilter==='All'||(activeFilter==='Low stock'?Number(p.quantity)<=Number(p.minQty||0):p.category===activeFilter));
+}).sort((a,b)=>String(a.location||'').localeCompare(String(b.location||''))||String(a.name).localeCompare(String(b.name)));
+$('resultCount').textContent=found.length+' item'+(found.length===1?'':'s');
+$('partsList').innerHTML=found.map(p=>{
+const low=Number(p.quantity)<=Number(p.minQty||0);
+return `<article class="part"><div class="parttop"><div style="min-width:0"><div class="partname">${esc(p.name)}</div><div class="partnum">Part #: ${esc(p.partNumber)}</div><div class="tags"><span class="tag">${esc(p.category||'Other')}</span>${p.location?`<span class="tag">📦 ${esc(p.location)}</span>`:''}${low?'<span class="tag low">Low stock</span>':''}</div>${p.notes?`<div class="muted" style="margin-top:7px">${esc(p.notes)}</div>`:''}</div><div><div class="qty">${Number(p.quantity)||0}</div><div class="qtylabel">in stock</div></div></div><div class="partactions"><button class="secondary" data-act="used" data-id="${esc(p.id)}" ${Number(p.quantity)<=0?'disabled':''}>− Used one</button><button class="secondary" data-act="restock" data-id="${esc(p.id)}">＋ Restock</button><button class="secondary" data-act="edit" data-id="${esc(p.id)}">Edit</button><button class="danger" data-act="delete" data-id="${esc(p.id)}">Delete</button></div></article>`;
+}).join('');
+$('emptyState').classList.toggle('hidden',found.length!==0);
+document.querySelectorAll('.chip').forEach(b=>b.classList.toggle('active',b.dataset.filter===activeFilter));
+}
+function clearForm(){editingId=null;$('partForm').reset();$('quantity').value='1';$('minQty').value='1';$('formTitle').textContent='Add inventory part';$('addPanel').classList.add('hidden')}
+function editPart(id){const p=parts.find(x=>String(x.id)===String(id));if(!p)return;editingId=p.id;$('partNumber').value=p.partNumber;$('partName').value=p.name;$('quantity').value=p.quantity;$('minQty').value=p.minQty??1;$('category').value=p.category||'Other';$('location').value=p.location||'';$('notes').value=p.notes||'';$('formTitle').textContent='Edit inventory part';$('addPanel').classList.remove('hidden');$('partNumber').focus();window.scrollTo({top:0,behavior:'smooth'})}
+$('addToggle').addEventListener('click',()=>{if(!$('addPanel').classList.contains('hidden')){clearForm()}else{clearForm();$('addPanel').classList.remove('hidden');$('partNumber').focus()}});
+$('cancelForm').addEventListener('click',clearForm);
+$('partForm').addEventListener('submit',e=>{
+e.preventDefault();
+const p={id:editingId||('p'+Date.now()+Math.random().toString(16).slice(2,6)),partNumber:$('partNumber').value.trim(),name:$('partName').value.trim(),quantity:Number($('quantity').value),minQty:Number($('minQty').value||0),category:$('category').value,location:$('location').value.trim(),notes:$('notes').value.trim()};
+if(!p.partNumber||!p.name||!Number.isInteger(p.quantity)||p.quantity<0||!Number.isInteger(p.minQty)||p.minQty<0){notify('Please enter valid part details and whole-number quantities.');return}
+if(parts.some(x=>x.partNumber.toLowerCase()===p.partNumber.toLowerCase()&&String(x.id)!==String(editingId))){notify('That part number already exists. Edit the existing item instead.');return}
+if(editingId){parts=parts.map(x=>String(x.id)===String(editingId)?p:x)}else parts.push(p);
+save();clearForm();render();notify('Inventory saved on this device.');
+});
+$('partsList').addEventListener('click',e=>{
+const b=e.target.closest('button[data-act]');if(!b)return;const p=parts.find(x=>String(x.id)===b.dataset.id);if(!p)return;
+if(b.dataset.act==='used'){if(p.quantity>0){p.quantity--;save();render();notify('Marked one part as used.')}} 
+if(b.dataset.act==='restock'){const n=prompt('How many units are being added?', '1');if(n===null)return;const v=Number(n);if(!Number.isInteger(v)||v<1){notify('Enter a whole number greater than zero.');return}p.quantity+=v;save();render();notify('Stock updated.')}
+if(b.dataset.act==='edit')editPart(p.id);
+if(b.dataset.act==='delete'&&confirm('Delete '+p.name+' ('+p.partNumber+') from inventory?')){parts=parts.filter(x=>String(x.id)!==String(p.id));save();render();notify('Part deleted.')}
+});
+$('search').addEventListener('input',render);$('clearSearch').addEventListener('click',()=>{$('search').value='';render();$('search').focus()});
+$('filters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;activeFilter=b.dataset.filter;render()});
+function download(name,blob){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+function csvCell(v){return '"'+String(v??'').replace(/"/g,'""')+'"'}
+$('exportCsv').addEventListener('click',()=>{const cols=['partNumber','name','quantity','minQty','category','location','notes'];const rows=[cols,...parts.map(p=>cols.map(c=>p[c]??''))];const csv='\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');download('vanstock-inventory.csv',new Blob([csv],{type:'text/csv;charset=utf-8;'}));notify('CSV export started.')});
+$('exportJson').addEventListener('click',()=>download('vanstock-backup-'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify({app:'VanStock',version:1,exportedAt:new Date().toISOString(),parts},null,2)],{type:'application/json'})));
+$('importToggle').addEventListener('click',()=>$('importPanel').classList.toggle('hidden'));$('cancelImport').addEventListener('click',()=>$('importPanel').classList.add('hidden'));
+function parseCSV(text){let rows=[],row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(quoted){if(c==='"'&&n==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}else{if(c==='"')quoted=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell=''}else cell+=c}}if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row)}return rows}
+$('importFile').addEventListener('click',async()=>{
+const f=$('fileInput').files[0];if(!f){notify('Choose a CSV or JSON file first.');return}
+try{
+const txt=await f.text();let incoming=[];
+if(f.name.toLowerCase().endsWith('.json')){const obj=JSON.parse(txt);incoming=Array.isArray(obj)?obj:obj.parts;if(!Array.isArray(incoming))throw Error('This JSON file does not contain a parts list.')}
+else{const rows=parseCSV(txt);if(rows.length<2)throw Error('No inventory rows found.');const heads=rows.shift().map(h=>h.trim().replace(/^\ufeff/,''));const aliases={partNumber:['partnumber','part number','part #','partnumber*','sku'],name:['name','description','part description'],quantity:['quantity','qty','on hand','stock'],minQty:['minqty','min qty','low stock threshold','minimum'],category:['category','appliance'],location:['location','bin','van location','shelf'],notes:['notes','note']};const ix={};for(const [key,als] of Object.entries(aliases))ix[key]=heads.findIndex(h=>als.includes(h.toLowerCase()));incoming=rows.filter(r=>r.some(c=>c.trim())).map(r=>({partNumber:ix.partNumber>=0?r[ix.partNumber].trim():'',name:ix.name>=0?r[ix.name].trim():'',quantity:ix.quantity>=0?Number(r[ix.quantity]||0):0,minQty:ix.minQty>=0?Number(r[ix.minQty]||0):1,category:ix.category>=0?r[ix.category].trim():'Other',location:ix.location>=0?r[ix.location].trim():'',notes:ix.notes>=0?r[ix.notes].trim():''}))}
+const normalized=incoming.map((p,i)=>({id:p.id||('i'+Date.now()+i),partNumber:String(p.partNumber||p.part_number||'').trim(),name:String(p.name||p.description||'').trim(),quantity:Number(p.quantity??p.qty??0),minQty:Number(p.minQty??p.min_qty??1),category:String(p.category||'Other'),location:String(p.location||p.bin||''),notes:String(p.notes||'')}));
+if(normalized.some(p=>!p.partNumber||!p.name||!Number.isFinite(p.quantity)||p.quantity<0))throw Error('Every imported row needs a part number, description, and valid quantity.');
+if(!confirm('Import '+normalized.length+' parts? Existing items with matching part numbers will be updated; other items will be kept.'))return;
+const map=new Map(parts.map(p=>[p.partNumber.toLowerCase(),p]));normalized.forEach(p=>map.set(p.partNumber.toLowerCase(),p));parts=Array.from(map.values());save();render();$('importPanel').classList.add('hidden');$('fileInput').value='';notify('Imported '+normalized.length+' parts.');
+}catch(err){notify('Import failed: '+err.message)}
+});
+$('clearAll').addEventListener('click',()=>{if(confirm('Delete ALL saved VanStock inventory from this browser? Export a backup first if needed.')){parts=[];save();render();notify('All inventory deleted.')}});
+load();render();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "VanStock Appliance Repair Inventory",
+  "short_name": "VanStock",
+  "description": "Offline appliance repair van inventory manager",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f4",
+  "theme_color": "#173c35"
+}
